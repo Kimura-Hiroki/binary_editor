@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>バイナリエディタ</title>
+  <style>
+    /* ベーススタイル */
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f5f7fa; color: #333; }
+    header { background: #1976d2; color: #fff; padding: 1rem; text-align: center; font-size: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    #drop-zone {
+      margin: 1rem auto; padding: 2rem; max-width: 600px;
+      border: 3px dashed #90caf9; border-radius: 8px; background: #e3f2fd;
+      text-align: center; font-size: 1.2rem; color: #555; transition: background 0.3s, border-color 0.3s;
+    }
+    #drop-zone.dragover { background: #bbdefb; border-color: #1976d2; }
+    #file-info { text-align: center; margin: 0.5rem; font-size: 0.9rem; color: #444; }
+    #data-container { margin: 1rem; overflow: auto; height: 70vh; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.5rem; font-family: 'Courier New', Courier, monospace; border-bottom: 1px solid #ddd; }
+    th { position: sticky; top: 0; background: #e3f2fd; }
+    tr:nth-child(even) { background: #fafafa; }
+    tr:hover { background: #e8f0fe; }
+    footer { text-align: center; padding: 0.5rem; font-size: 0.9rem; color: #555; background: #f0f0f0; }
+    .omission { text-align: center; font-style: italic; color: #777; }
+  </style>
+</head>
+<body>
+  <header>バイナリエディタ</header>
+  <div id="drop-zone">ファイルをドラッグ＆ドロップしてください</div>
+  <div id="file-info"></div>
+  <div id="data-container">
+    <table id="data-table"></table>
+  </div>
+  <footer>©キムりん＠松本深志高校</footer>
+
+  <script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInfo = document.getElementById('file-info');
+    const dataTable = document.getElementById('data-table');
+
+    /* ドラッグ＆ドロップイベント */
+    ['dragenter', 'dragover'].forEach(evt => {
+      dropZone.addEventListener(evt, e => {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+      dropZone.addEventListener(evt, e => {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.remove('dragover');
+      });
+    });
+
+    dropZone.addEventListener('drop', e => {
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      fileInfo.textContent = `ファイル名: ${file.name} | サイズ: ${file.size} バイト`;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const bytes = new Uint8Array(reader.result);
+        renderTable(bytes);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    /* テーブル描画 */
+    function renderTable(bytes) {
+      dataTable.innerHTML = '';
+      // ヘッダー行
+      const header = document.createElement('tr');
+      header.innerHTML = '<th>オフセット</th><th>2進数</th><th>16進数</th>';
+      dataTable.appendChild(header);
+
+      const total = bytes.length;
+      const limit = 1000;
+      const edge = 500;
+      if (total <= limit) {
+        // すべて表示
+        bytes.forEach((b, i) => appendRow(i, b));
+      } else {
+        // 前半500バイト
+        for (let i = 0; i < edge; i++) appendRow(i, bytes[i]);
+        // 省略行
+        const omitted = total - limit;
+        const skipRow = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.className = 'omission';
+        td.textContent = `... ${omitted} バイト省略 ...`;
+        skipRow.appendChild(td);
+        dataTable.appendChild(skipRow);
+        // 後半500バイト
+        for (let i = total - edge; i < total; i++) appendRow(i, bytes[i]);
+      }
+    }
+
+    function appendRow(offset, byte) {
+      const row = document.createElement('tr');
+      const off = document.createElement('td'); off.textContent = offset;
+      const bn = document.createElement('td'); bn.textContent = byte.toString(2).padStart(8, '0');
+      const hx = document.createElement('td'); hx.textContent = byte.toString(16).padStart(2, '0').toUpperCase();
+      row.append(off, bn, hx);
+      dataTable.appendChild(row);
+    }
+  </script>
+</body>
+</html>
